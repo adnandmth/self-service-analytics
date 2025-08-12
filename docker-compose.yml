@@ -1,0 +1,92 @@
+# Development only configurations, production have different setup
+
+services:
+  # Chatbot API Backend
+  chatbot-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: bi-chatbot-api
+    env_file:
+      - .env
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.16.50.8:55432/${PGDATABASE_PANDAWA}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    networks:
+      - bi_staging_traefik
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Web Interface
+  chatbot-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: bi-chatbot-web
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://chatbot-api:8000
+      - REACT_APP_APP_NAME=BI Toba – Self-Service Analytics
+    ports:
+      - "8080:80"
+    networks:
+      - bi_staging_traefik
+    depends_on:
+      - chatbot-api
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: bi-chatbot-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - bi_staging_traefik
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: bi-chatbot-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - bi_staging_traefik
+    depends_on:
+      - chatbot-api
+      - chatbot-web
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  bi_staging_traefik:
+    external: true 

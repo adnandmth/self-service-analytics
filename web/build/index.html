@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI Self-Service Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .typing-indicator {
+            display: none;
+        }
+        .typing-indicator.show {
+            display: flex;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result-table {
+            font-size: 0.875rem;
+        }
+        .result-table th {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-robot text-blue-600 text-2xl mr-3"></i>
+                        <h1 class="text-xl font-semibold text-gray-900">BI Self-Service Chatbot</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="schemaBtn" class="text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-database mr-2"></i>Schema
+                        </button>
+                        <button id="exportBtn" class="text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-download mr-2"></i>Export
+                        </button>
+                        <button id="helpBtn" class="text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-question-circle mr-2"></i>Help
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Chat Interface -->
+                <div class="lg:col-span-3">
+                    <div class="bg-white rounded-lg shadow-sm border">
+                        <!-- Chat Messages -->
+                        <div id="chatMessages" class="chat-container p-4 overflow-y-auto">
+                            <div class="message-bubble bg-blue-100 p-3 rounded-lg mb-4">
+                                <div class="flex items-start">
+                                    <i class="fas fa-robot text-blue-600 mt-1 mr-3"></i>
+                                    <div>
+                                        <p class="text-sm text-gray-800">
+                                            Hello! I'm your BI assistant. I can help you get insights from our database using natural language. 
+                                            Try asking questions like:
+                                        </p>
+                                        <ul class="text-sm text-gray-600 mt-2 space-y-1">
+                                            <li>• "Show me user leads for last month"</li>
+                                            <li>• "What are the top performing projects by leads?"</li>
+                                            <li>• "Compare leads between different marketing channels"</li>
+                                            <li>• "How many listings were created in Jakarta this week?"</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Typing Indicator -->
+                        <div id="typingIndicator" class="typing-indicator px-4 pb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-robot text-blue-600 mr-3"></i>
+                                <div class="flex space-x-1">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input Area -->
+                        <div class="border-t p-4">
+                            <form id="chatForm" class="flex space-x-3">
+                                <div class="flex-1">
+                                    <input 
+                                        type="text" 
+                                        id="messageInput" 
+                                        placeholder="Ask me anything about the data..."
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        autocomplete="off"
+                                    >
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    id="sendBtn"
+                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                                >
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="lg:col-span-1">
+                    <div class="space-y-6">
+                        <!-- Quick Actions -->
+                        <div class="bg-white rounded-lg shadow-sm border p-4">
+                            <h3 class="text-lg font-medium text-gray-900 mb-3">Quick Actions</h3>
+                            <div class="space-y-2">
+                                <button class="quick-action-btn w-full text-left p-2 rounded hover:bg-gray-50 text-sm">
+                                    <i class="fas fa-chart-line mr-2"></i>Top Projects
+                                </button>
+                                <button class="quick-action-btn w-full text-left p-2 rounded hover:bg-gray-50 text-sm">
+                                    <i class="fas fa-users mr-2"></i>User Leads
+                                </button>
+                                <button class="quick-action-btn w-full text-left p-2 rounded hover:bg-gray-50 text-sm">
+                                    <i class="fas fa-map-marker-alt mr-2"></i>Regional Data
+                                </button>
+                                <button class="quick-action-btn w-full text-left p-2 rounded hover:bg-gray-50 text-sm">
+                                    <i class="fas fa-calendar mr-2"></i>Recent Activity
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Query History -->
+                        <div class="bg-white rounded-lg shadow-sm border p-4">
+                            <h3 class="text-lg font-medium text-gray-900 mb-3">Recent Queries</h3>
+                            <div id="queryHistory" class="space-y-2 text-sm">
+                                <!-- Query history items will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schema Modal -->
+    <div id="schemaModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+                <div class="flex justify-between items-center p-6 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">Database Schema</h3>
+                    <button id="closeSchemaModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="schemaContent" class="p-6">
+                    <!-- Schema content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+                <div class="flex justify-between items-center p-6 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">Help & Examples</h3>
+                    <button id="closeHelpModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-2">How to use the chatbot:</h4>
+                            <p class="text-sm text-gray-600 mb-4">
+                                Simply type your question in natural language and I'll convert it to SQL and fetch the results for you.
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-2">Example queries:</h4>
+                            <ul class="text-sm text-gray-600 space-y-1">
+                                <li>• "Show me user leads for last month"</li>
+                                <li>• "What are the top 10 projects by leads?"</li>
+                                <li>• "Compare leads between different marketing channels"</li>
+                                <li>• "How many listings were created in Jakarta this week?"</li>
+                                <li>• "Show me client performance data for this quarter"</li>
+                                <li>• "What's the average price of properties in each region?"</li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-2">Available data:</h4>
+                            <ul class="text-sm text-gray-600 space-y-1">
+                                <li>• User leads and interactions</li>
+                                <li>• Client performance metrics</li>
+                                <li>• Project analytics</li>
+                                <li>• Property listings</li>
+                                <li>• Regional data</li>
+                                <li>• Marketing channel data</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
