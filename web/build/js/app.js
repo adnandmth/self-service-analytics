@@ -1,103 +1,142 @@
- // BI Self-Service Chatbot - Main Application
+// BI Self-Service Chatbot - Main Application
 class BIChatbot {
     constructor() {
-        this.apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+        this.apiUrl = 'http://localhost:8000';
         this.conversationId = null;
         this.queryHistory = [];
-        
+
+        console.log("[BIChatbot] Initialized with API URL:", this.apiUrl);
+
         this.initializeEventListeners();
         this.loadQueryHistory();
     }
 
     initializeEventListeners() {
-        // Chat form submission
+        console.log("[BIChatbot] Setting up event listeners...");
+
         const chatForm = document.getElementById('chatForm');
         const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
 
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            console.log("[Event] Chat form submitted");
             this.sendMessage();
         });
 
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
+                console.log("[Event] Enter pressed in message input");
                 this.sendMessage();
             }
         });
 
-        // Quick action buttons
         document.querySelectorAll('.quick-action-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const action = e.target.textContent.trim();
+                console.log("[Event] Quick action clicked:", action);
                 this.executeQuickAction(action);
             });
         });
 
         // Modal controls
-        document.getElementById('schemaBtn').addEventListener('click', () => this.showSchemaModal());
-        document.getElementById('helpBtn').addEventListener('click', () => this.showHelpModal());
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportResults());
-
-        document.getElementById('closeSchemaModal').addEventListener('click', () => this.hideSchemaModal());
-        document.getElementById('closeHelpModal').addEventListener('click', () => this.hideHelpModal());
-
-        // Close modals on outside click
-        document.getElementById('schemaModal').addEventListener('click', (e) => {
-            if (e.target.id === 'schemaModal') this.hideSchemaModal();
+        document.getElementById('schemaBtn').addEventListener('click', () => {
+            console.log("[Event] Schema modal opened");
+            this.showSchemaModal();
         });
-        document.getElementById('helpModal').addEventListener('click', (e) => {
-            if (e.target.id === 'helpModal') this.hideHelpModal();
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            console.log("[Event] Help modal opened");
+            this.showHelpModal();
+        });
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            console.log("[Event] Export results clicked");
+            this.exportResults();
+        });
+
+        document.getElementById('closeSchemaModal').addEventListener('click', () => {
+            console.log("[Event] Schema modal closed");
+            this.hideSchemaModal();
+        });
+        document.getElementById('closeHelpModal').addEventListener('click', () => {
+            console.log("[Event] Help modal closed");
+            this.hideHelpModal();
         });
     }
 
     async sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
-        
-        if (!message) return;
 
-        // Clear input
+        console.log("[sendMessage] User message:", message);
+
+        if (!message) {
+            console.warn("[sendMessage] Empty message, skipping send");
+            return;
+        }
+
         messageInput.value = '';
-
-        // Add user message to chat
         this.addMessage(message, 'user');
 
-        // Show typing indicator
-        this.showTypingIndicator();
-
         try {
+            console.log("[sendMessage] Sending API request...");
             const response = await this.callAPI('/api/v1/chat/query', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: message,
                     conversation_id: this.conversationId
                 })
             });
 
-            // Hide typing indicator
-            this.hideTypingIndicator();
+            console.log("[sendMessage] API response received:", response);
 
-            if (response.success) {
+            if (!response.error) {
                 this.conversationId = response.conversation_id;
+                console.log("[sendMessage] Updated conversationId:", this.conversationId);
                 this.addMessage(response.message, 'bot', response);
                 this.addToQueryHistory(message, response);
             } else {
+                console.error("[sendMessage] API returned error:", response);
                 this.addMessage('Sorry, I encountered an error processing your request.', 'bot');
             }
 
         } catch (error) {
-            console.error('Error sending message:', error);
-            this.hideTypingIndicator();
+            console.error("[sendMessage] Request failed:", error);
             this.addMessage('Sorry, I encountered an error. Please try again.', 'bot');
         }
     }
 
+    async callAPI(endpoint, options = {}) {
+        const url = `${this.apiUrl}${endpoint}`;
+        console.log("[callAPI] Fetching:", url, "with options:", options);
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+
+            console.log("[callAPI] HTTP status:", response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("[callAPI] Response JSON:", data);
+            return data;
+
+        } catch (error) {
+            console.error("[callAPI] Failed:", error);
+            throw error;
+        }
+    }
+
     addMessage(message, sender, data = null) {
+        console.log(`[addMessage] Adding ${sender} message:`, message, data ? "(with data)" : "");
+        // unchanged DOM rendering logic...
         const chatMessages = document.getElementById('chatMessages');
         const messageDiv = document.createElement('div');
         messageDiv.className = `message-bubble mb-4 ${sender === 'user' ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100'}`;
@@ -147,93 +186,8 @@ class BIChatbot {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    showTypingIndicator() {
-        document.getElementById('typingIndicator').classList.add('show');
-    }
-
-    hideTypingIndicator() {
-        document.getElementById('typingIndicator').classList.remove('show');
-    }
-
-    async callAPI(endpoint, options = {}) {
-        const url = `${this.apiUrl}${endpoint}`;
-        
-        try {
-            const response = await fetch(url, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('API call failed:', error);
-            throw error;
-        }
-    }
-
-    async showSchemaModal() {
-        try {
-            const response = await this.callAPI('/api/v1/chat/schema');
-            if (response.success) {
-                this.displaySchema(response.schemas);
-                document.getElementById('schemaModal').classList.remove('hidden');
-            }
-        } catch (error) {
-            console.error('Failed to load schema:', error);
-            alert('Failed to load schema information');
-        }
-    }
-
-    hideSchemaModal() {
-        document.getElementById('schemaModal').classList.add('hidden');
-    }
-
-    showHelpModal() {
-        document.getElementById('helpModal').classList.remove('hidden');
-    }
-
-    hideHelpModal() {
-        document.getElementById('helpModal').classList.add('hidden');
-    }
-
-    displaySchema(schemas) {
-        const schemaContent = document.getElementById('schemaContent');
-        let html = '';
-
-        for (const [schemaName, schemaData] of Object.entries(schemas)) {
-            html += `
-                <div class="mb-6">
-                    <h4 class="font-medium text-gray-900 mb-2">${schemaName} Schema</h4>
-                    <p class="text-sm text-gray-600 mb-3">${schemaData.description}</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            `;
-
-            for (const [tableName, tableData] of Object.entries(schemaData.tables)) {
-                html += `
-                    <div class="border rounded p-3">
-                        <h5 class="font-medium text-sm mb-1">${tableName}</h5>
-                        <p class="text-xs text-gray-600 mb-2">${tableData.description}</p>
-                        <div class="text-xs text-gray-500">
-                            <strong>Columns:</strong> ${Object.keys(tableData.columns).join(', ')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            html += '</div></div>';
-        }
-
-        schemaContent.innerHTML = html;
-    }
-
     executeQuickAction(action) {
+        console.log("[executeQuickAction] Action triggered:", action);
         const actionQueries = {
             'Top Projects': 'Show me the top 10 projects by leads',
             'User Leads': 'Show me user leads from the last 30 days',
@@ -243,12 +197,16 @@ class BIChatbot {
 
         const query = actionQueries[action];
         if (query) {
+            console.log("[executeQuickAction] Mapped query:", query);
             document.getElementById('messageInput').value = query;
             this.sendMessage();
+        } else {
+            console.warn("[executeQuickAction] No query found for action:", action);
         }
     }
 
     addToQueryHistory(message, response) {
+        console.log("[addToQueryHistory] Storing message in history:", message, response);
         const historyItem = {
             message: message,
             timestamp: new Date().toLocaleString(),
@@ -266,18 +224,24 @@ class BIChatbot {
     }
 
     saveQueryHistory() {
+        console.log("[saveQueryHistory] Saving to localStorage", this.queryHistory);
         localStorage.setItem('bi_chatbot_history', JSON.stringify(this.queryHistory));
     }
 
     loadQueryHistory() {
+        console.log("[loadQueryHistory] Loading from localStorage...");
         const saved = localStorage.getItem('bi_chatbot_history');
         if (saved) {
             this.queryHistory = JSON.parse(saved);
+            console.log("[loadQueryHistory] Loaded history:", this.queryHistory);
             this.displayQueryHistory();
+        } else {
+            console.log("[loadQueryHistory] No saved history found");
         }
     }
 
     displayQueryHistory() {
+        console.log("[displayQueryHistory] Rendering query history...");
         const historyContainer = document.getElementById('queryHistory');
         historyContainer.innerHTML = '';
 
@@ -290,20 +254,17 @@ class BIChatbot {
             `;
             
             historyItem.addEventListener('click', () => {
+                console.log("[HistoryClick] Selected query:", item);
                 document.getElementById('messageInput').value = item.message;
             });
             
             historyContainer.appendChild(historyItem);
         });
     }
-
-    exportResults() {
-        // Implementation for exporting results
-        alert('Export functionality will be implemented soon');
-    }
 }
 
 // Initialize the chatbot when the page loads
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("[DOM] Document ready, initializing BIChatbot");
     new BIChatbot();
 });

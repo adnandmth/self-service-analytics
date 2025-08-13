@@ -36,7 +36,7 @@ services:
     container_name: bi-chatbot-web
     restart: unless-stopped
     environment:
-      - REACT_APP_API_URL=http://chatbot-api:8000
+      - REACT_APP_API_URL=http://localhost:8000
       - REACT_APP_APP_NAME=BI Toba – Self-Service Analytics
     ports:
       - "8080:80"

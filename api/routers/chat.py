@@ -58,11 +58,26 @@ async def process_query(
         schema_info = await get_schema_info()
         
         # Generate SQL from natural language
-        sql_query = await llm_service.generate_sql(
+        generated_output = await llm_service.generate_sql(
             user_query=request.message,
             schema_info=schema_info,
             conversation_id=conversation_id
         )
+        
+        # --- Detect mode ---
+        stripped_output = generated_output.strip().lower()
+        is_sql = stripped_output.startswith("select") or stripped_output.startswith("with")
+        
+        if not is_sql:
+            # Treat as explanation only
+            return ChatResponse(
+                message=generated_output,
+                conversation_id=conversation_id,
+                timestamp=str(asyncio.get_event_loop().time())
+            )
+        
+        # --- SQL mode ---
+        sql_query = generated_output
         
         # Validate generated SQL
         validation_result = await query_validator.validate_query(sql_query)
@@ -70,7 +85,7 @@ async def process_query(
             return ChatResponse(
                 message=f"I couldn't generate a valid query for your request. {validation_result['error']}",
                 conversation_id=conversation_id,
-                timestamp=asyncio.get_event_loop().time()
+                timestamp=str(asyncio.get_event_loop().time())
             )
         
         # Execute query
@@ -102,7 +117,7 @@ async def process_query(
             message=f"Sorry, I encountered an error processing your query: {str(e)}",
             error=str(e),
             conversation_id=conversation_id,
-            timestamp=asyncio.get_event_loop().time()
+            timestamp=str(asyncio.get_event_loop().time())
         )
 
 @router.get("/schema")
