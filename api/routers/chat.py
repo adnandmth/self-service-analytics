@@ -5,7 +5,6 @@ Chat router for natural language query processing
 import asyncio
 from typing import Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import structlog
 
@@ -15,6 +14,7 @@ from api.services.llm_service import LLMService
 from api.services.query_validator import QueryValidator
 from api.utils.cache import get_cache, set_cache
 from api.utils.rate_limiter import check_rate_limit
+from api.utils.oauth2 import get_current_user
 
 logger = structlog.get_logger()
 
@@ -41,12 +41,13 @@ class ChatResponse(BaseModel):
 async def process_query(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
-    current_user: Dict = Depends(lambda: {"id": "test_user"})  # Placeholder
+    current_user: Dict = Depends(lambda: {"id": "test_user"})  # Placeholder current_user: Dict = Depends(get_current_user)
 ):
     """Process natural language query and return results"""
     
+    user_id = current_user.get("id", "anonymous") # user_id = current_user.get("id")
+
     # Rate limiting
-    user_id = current_user.get("id", "anonymous")
     if not await check_rate_limit(user_id):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
@@ -69,7 +70,6 @@ async def process_query(
         is_sql = stripped_output.startswith("select") or stripped_output.startswith("with")
         
         if not is_sql:
-            # Treat as explanation only
             return ChatResponse(
                 message=generated_output,
                 conversation_id=conversation_id,
@@ -112,7 +112,6 @@ async def process_query(
         )
         
     except Exception as e:
-        logger.error("Query processing failed", error=str(e), user_id=user_id)
         return ChatResponse(
             message=f"Sorry, I encountered an error processing your query: {str(e)}",
             error=str(e),
@@ -155,7 +154,7 @@ async def get_table_schema_info(schema: str, table: str):
     try:
         # Validate table access
         if not validate_table_access(table, schema):
-            raise HTTPException(status_code=403, detail="Access to this table is not allowed")
+            raise HTTPException(status_code=403, detail="Access to thistable is not allowed")
         
         from api.core.database import get_table_schema
         results = await get_table_schema(table, schema)

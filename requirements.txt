@@ -30,6 +30,7 @@ pydantic-settings==2.5.0
 python-dotenv==1.0.0
 httpx==0.25.2
 aiofiles==23.2.1
+email-validator==2.1.0.post1
 
 # Logging and monitoring
 structlog==23.2.0
@@ -40,3 +41,8 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 black==23.11.0
 flake8==6.1.0 
+
+# Password Hashing
+passlib==1.7.4
+bcrypt==4.0.1
+python-jose==3.3.0

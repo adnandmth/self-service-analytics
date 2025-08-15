@@ -12,10 +12,10 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 import structlog
 
-from api.routers import chat, auth, health, export
+from api.routers import chat, auth, health, export, user
 from api.core.config import settings
 from api.core.database import init_db
-from api.core.security import get_current_user
+from api.utils.oauth2 import get_current_user
 from api.utils.logging import setup_logging
 
 # Setup structured logging
@@ -63,19 +63,18 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(user.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(health.router, prefix="/api/v1/health", tags=["health"])
 app.include_router(
     chat.router, 
     prefix="/api/v1/chat", 
-    tags=["chat"],
-    dependencies=[Depends(get_current_user)]
+    tags=["chat"]
 )
 app.include_router(
     export.router, 
     prefix="/api/v1/export", 
-    tags=["export"],
-    dependencies=[Depends(get_current_user)]
+    tags=["export"]
 )
 
 @app.exception_handler(Exception)
@@ -95,12 +94,3 @@ async def root():
         "version": "1.0.0",
         "status": "running"
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.DEBUG
-    )

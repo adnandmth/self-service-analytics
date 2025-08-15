@@ -64,7 +64,17 @@ async def init_db():
     except Exception as e:
         logger.error("Failed to initialize database", error=str(e))
         raise
+    
+"""
+This function is intended to be used as a FastAPI dependency that provides a per-request
+asynchronous SQLAlchemy session (AsyncSession). It manages the lifecycle of the session,
+including committing or rolling back transactions and releasing the connection back to the pool
+automatically once the request is completed.
 
+Using this session is most beneficial for endpoints that require transactional consistency
+or ORM-related operations, such as creating, updating, or deleting records.
+For simple read-only queries, directly using the async_engine for executing raw SQL may be more efficient.
+"""
 async def get_db_session():
     """Get database session"""
     async with AsyncSessionLocal() as session:
