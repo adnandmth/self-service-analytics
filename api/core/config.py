@@ -82,7 +82,7 @@ BI_SCHEMA_INFO = {
     "dbt_reports": {
         "description": "Business Intelligence report tables",
         "tables": {
-            "rep_revenues_olx": "User leads and interactions"
+            "rep_leads": "User leads and interactions"
         }
     }
 } 
